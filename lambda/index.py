@@ -24,7 +24,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 #event：API Gateway などから渡されるリクエスト情報全体の辞書
 #context：Lambda 実行時に AWS が渡すメタ情報（関数名・ARN・残り実行時間など）
 def lambda_handler(event, context):
-    try:
+    # try:
         # コンテキストから実行リージョンを取得し、クライアントを初期化
         global bedrock_client
         if bedrock_client is None:
@@ -115,50 +115,50 @@ def lambda_handler(event, context):
         
         # レスポンスを解析
         response_body = json.loads(response['generated_text'].read())
-        print(" transformers response:", json.dumps(response_body, default=str))
+        return json.dumps(response_body, default=str)
         
-        # 応答の検証
-        if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
-            raise Exception("No response content from the model")
+    #     # 応答の検証
+    #     if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
+    #         raise Exception("No response content from the model")
         
-        # アシスタントの応答を取得
-        assistant_response = response_body['output']['message']['content'][0]['text']
+    #     # アシスタントの応答を取得
+    #     assistant_response = response_body['output']['message']['content'][0]['text']
         
-        # アシスタントの応答を会話履歴に追加
-        messages.append({
-            "role": "assistant",
-            "content": assistant_response
-        })
+    #     # アシスタントの応答を会話履歴に追加
+    #     messages.append({
+    #         "role": "assistant",
+    #         "content": assistant_response
+    #     })
         
-        # 成功レスポンスの返却
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-                "Access-Control-Allow-Methods": "OPTIONS,POST"
-            },
-            "body": json.dumps({
-                "success": True,
-                "response": assistant_response,
-                "conversationHistory": messages
-            })
-        }
+    #     # 成功レスポンスの返却
+    #     return {
+    #         "statusCode": 200,
+    #         "headers": {
+    #             "Content-Type": "application/json",
+    #             "Access-Control-Allow-Origin": "*",
+    #             "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    #             "Access-Control-Allow-Methods": "OPTIONS,POST"
+    #         },
+    #         "body": json.dumps({
+    #             "success": True,
+    #             "response": assistant_response,
+    #             "conversationHistory": messages
+    #         })
+    #     }
         
-    except Exception as error:
-        print("Error:", str(error))
+    # except Exception as error:
+    #     print("Error:", str(error))
         
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-                "Access-Control-Allow-Methods": "OPTIONS,POST"
-            },
-            "body": json.dumps({
-                "success": False,
-                "error": str(error)
-            })
-        }
+    #     return {
+    #         "statusCode": 500,
+    #         "headers": {
+    #             "Content-Type": "application/json",
+    #             "Access-Control-Allow-Origin": "*",
+    #             "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    #             "Access-Control-Allow-Methods": "OPTIONS,POST"
+    #         },
+    #         "body": json.dumps({
+    #             "success": False,
+    #             "error": str(error)
+    #         })
+    #     }
