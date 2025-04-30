@@ -107,7 +107,7 @@ def lambda_handler(event, context):
 
 
     # ──────────────── ネットワーク送信 ────────────────
-    with urllib.request.urlopen(req) as res:
+    with urllib.request.urlopen(req, timeout=200) as res:
         text = res.read().decode("utf-8")    # バイト→文字列
         result = json.loads(text)           # 文字列→辞書
 
