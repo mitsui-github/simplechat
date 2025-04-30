@@ -135,7 +135,7 @@ def lambda_handler(event, context):
             method="POST"
         )
 
-        with urllib.request.urlopen(req, timeout=20) as res:
+        with urllib.request.urlopen(req, timeout=200) as res:
             text   = res.read().decode("utf-8")
             result = json.loads(text)
 
