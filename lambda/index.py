@@ -86,63 +86,88 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
 #FastAPI用
 def lambda_handler(event, context):
-    # ──────────────── request body 解析 ────────────────
-    body = json.loads(event['body'])
-    prompt = body['message']  # フロントから送られたメッセージ
-
-    # ──────────────── ngrok エンドポイント設定 ────────────────
-    url = "https://0641-35-247-128-210.ngrok-free.app/generate"
-    payload = {
-        "prompt": prompt,
-        "max_new_tokens": 512,
-        "do_sample": True,
-        "temperature": 0.7,
-        "top_p": 0.9
+    # ──────────── 共通 CORS ヘッダー ────────────
+    CORS_HEADERS = {
+        "Access-Control-Allow-Origin":  "*",
+        "Access-Control-Allow-Methods": "OPTIONS,POST",
+        "Access-Control-Allow-Headers": "Content-Type"
     }
-    data = json.dumps(payload).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
 
-    # ──────────────── Request オブジェクト作成 ────────────────
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-
-    try:
-        # ──────────────── ネットワーク送信 ────────────────
-        with urllib.request.urlopen(req, timeout=200) as res:
-            text = res.read().decode("utf-8")    # バイト→文字列
-            result = json.loads(text)           # 文字列→辞書
-
-        # ──────────────── generated_text を抽出 ────────────────
-        generated = result.get("generated_text", "")
-
-        # ──────────────── Lambda の返却フォーマット ────────────────
+    # ──────────── プレフライト対応 ────────────
+    method = event.get("httpMethod", "")
+    if method == "OPTIONS":
         return {
             "statusCode": 200,
-            "headers": {
-                "Content-Type":                "application/json",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers":"Content-Type",
-                "Access-Control-Allow-Methods":"OPTIONS,POST"
-            },
-            "body": json.dumps({
-                "success":        True,
-                "generated_text": generated,
-                "response_time":  result.get("response_time")
-            })
+            "headers":    CORS_HEADERS,
+            "body":       ""
+        }
+
+    # ──────────── POST以外は拒否 ────────────
+    if method != "POST":
+        return {
+            "statusCode": 405,
+            "headers":    CORS_HEADERS,
+            "body":       json.dumps({"message": "Method Not Allowed"})
+        }
+
+    try:
+        # ──────────── リクエストボディ解析 ────────────
+        body = json.loads(event.get("body", "{}"))
+        # フロントが送っているキー名に合わせてください
+        prompt = body.get("message") or body.get("prompt")
+        if prompt is None:
+            raise ValueError("No 'message' or 'prompt' in request body")
+
+        # ──────────── 外部 API 呼び出し ────────────
+        url = "https://0641-35-247-128-210.ngrok-free.app/generate"
+        payload = {
+            "prompt": prompt,
+            "max_new_tokens": 512,
+            "do_sample": True,
+            "temperature": 0.7,
+            "top_p": 0.9
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=20) as res:
+            text   = res.read().decode("utf-8")
+            result = json.loads(text)
+
+        # ──────────── レスポンス整形 ────────────
+        generated = result.get("generated_text", "")
+        response_body = {
+            "success":        True,
+            "generated_text": generated,
+            "response_time":  result.get("response_time", 0)
+        }
+
+        return {
+            "statusCode": 200,
+            "headers":    {**CORS_HEADERS, "Content-Type": "application/json"},
+            "body":       json.dumps(response_body)
         }
 
     except urllib.error.HTTPError as e:
         # 4xx/5xx エラー
-        err_body = e.read().decode()
+        err_body = e.read().decode("utf-8")
         return {
             "statusCode": e.code,
-            "body":        json.dumps({"success": False, "error": err_body})
+            "headers":    CORS_HEADERS,
+            "body":       json.dumps({"success": False, "error": err_body})
         }
 
-    except urllib.error.URLError as e:
-        # ネットワーク到達失敗など
+    except Exception as e:
+        # それ以外の例外
         return {
-            "statusCode": 502,
-            "body":        json.dumps({"success": False, "error": str(e.reason)})
+            "statusCode": 500,
+            "headers":    CORS_HEADERS,
+            "body":       json.dumps({"success": False, "error": str(e)})
         }
         # url = "https://0641-35-247-128-210.ngrok-free.app/generate"
 
