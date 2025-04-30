@@ -114,7 +114,7 @@ def lambda_handler(event, context):
         # ──────────── リクエストボディ解析 ────────────
         body = json.loads(event.get("body", "{}"))
         # フロントが送っているキー名に合わせてください
-        prompt = body.get("message") or body.get("prompt")
+        prompt = body.get("message") 
         if prompt is None:
             raise ValueError("No 'message' or 'prompt' in request body")
 
