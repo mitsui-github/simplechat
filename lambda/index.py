@@ -112,16 +112,15 @@ def lambda_handler(event, context):
 
     try:
         # ──────────── リクエストボディ解析 ────────────
-        body = json.loads(event.get("body", "{}"))
-        # フロントが送っているキー名に合わせてください
-        prompt = body.get("message") 
-        if prompt is None:
-            raise ValueError("No 'message' or 'prompt' in request body")
+        body = json.loads(event['body'])
+        message = body['message']
+        if message is None:
+            raise ValueError("No 'message' in request body")
 
         # ──────────── 外部 API 呼び出し ────────────
         url = "https://0641-35-247-128-210.ngrok-free.app/generate"
         payload = {
-            "prompt": prompt,
+            "prompt": message,
             "max_new_tokens": 512,
             "do_sample": True,
             "temperature": 0.7,
@@ -140,7 +139,7 @@ def lambda_handler(event, context):
             result = json.loads(text)
 
         # ──────────── レスポンス整形 ────────────
-        generated = result.get("generated_text", "")
+        generated = result.get("generated_text")
         response_body = {
             "success":        True,
             "generated_text": generated,
