@@ -105,16 +105,45 @@ def lambda_handler(event, context):
     # ──────────────── Request オブジェクト作成 ────────────────
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
 
+    try:
+        # ──────────────── ネットワーク送信 ────────────────
+        with urllib.request.urlopen(req, timeout=10) as res:
+            text = res.read().decode("utf-8")    # バイト→文字列
+            result = json.loads(text)           # 文字列→辞書
 
-    # ──────────────── ネットワーク送信 ────────────────
-    with urllib.request.urlopen(req, timeout=200) as res:
-        text = res.read().decode("utf-8")    # バイト→文字列
-        result = json.loads(text)           # 文字列→辞書
+        # ──────────────── generated_text を抽出 ────────────────
+        generated = result.get("generated_text", "")
 
-    # ──────────────── generated_text を抽出 ────────────────
-    generated = result.get("generated_text", "")
+        # ──────────────── Lambda の返却フォーマット ────────────────
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type":                "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers":"Content-Type",
+                "Access-Control-Allow-Methods":"OPTIONS,POST"
+            },
+            "body": json.dumps({
+                "success":        True,
+                "generated_text": generated,
+                "response_time":  result.get("response_time")
+            })
+        }
 
-    return generated
+    except urllib.error.HTTPError as e:
+        # 4xx/5xx エラー
+        err_body = e.read().decode()
+        return {
+            "statusCode": e.code,
+            "body":        json.dumps({"success": False, "error": err_body})
+        }
+
+    except urllib.error.URLError as e:
+        # ネットワーク到達失敗など
+        return {
+            "statusCode": 502,
+            "body":        json.dumps({"success": False, "error": str(e.reason)})
+        }
         # url = "https://0641-35-247-128-210.ngrok-free.app/generate"
 
         # request_payload ={
